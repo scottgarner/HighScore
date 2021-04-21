@@ -8,23 +8,30 @@
 <div id="container"></div>
 
 <script type="x-shader/x-vertex" id="vertexshader">
+    varying vec3 vColor;
+    uniform float time;
+
     void main() {
-        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-        gl_PointSize = 1.0;
-        gl_Position = projectionMatrix * mvPosition;
+        vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+        vColor = normalize(abs(worldPosition.xyz * 10.0));
+
+        gl_Position = projectionMatrix * viewMatrix * worldPosition;
+        gl_PointSize = (100.0 / gl_Position.z);
     }
 </script>
 
 <script type="x-shader/x-fragment" id="fragmentshader">
+    uniform sampler2D pointTexture;
+    varying vec3 vColor;
     void main() {
-        gl_FragColor = vec4(1, 1, 1, 1);
+        gl_FragColor = texture2D(pointTexture, gl_PointCoord) * vec4(vColor, 1.0);
     }
 </script>
 
 <script type="module">
     import Stats from 'https://mrdoob.github.io/stats.js/build/stats.module.js';
     import * as THREE from 'https://unpkg.com/three@0.127.0/build/three.module.js'
-    import {OrbitControls} from 'https://unpkg.com/three@0.127.0/examples/jsm/controls/OrbitControls.js'
+    import {TrackballControls} from 'https://unpkg.com/three@0.127.0/examples/jsm/controls/TrackballControls.js'
 
     let renderer,
         scene,
@@ -51,14 +58,30 @@
 
         //
 
+        uniforms = {
+            time: {
+                type: "f",
+                value: 1.0
+            },
+            pointTexture: {
+                value: new THREE
+                    .TextureLoader()
+                    .load("https://threejs.org/examples/textures/sprites/spark1.png")
+            }
+        };
+
         const shaderMaterial = new THREE.ShaderMaterial({
+            uniforms: uniforms,
             vertexShader: document
                 .getElementById('vertexshader')
                 .textContent,
             fragmentShader: document
                 .getElementById('fragmentshader')
                 .textContent,
-            depthTest: false
+            blending: THREE.AdditiveBlending,
+            depthTest: false,
+            transparent: true,
+            vertexColors: true
         });
 
         geometry = new THREE.BufferGeometry();
@@ -88,18 +111,10 @@
 
         // controls
 
-        controls = new OrbitControls(camera, renderer.domElement);
-        controls.listenToKeyEvents(window);
-
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
-
-        controls.screenSpacePanning = false;
-
-        controls.minDistance = 10;
-        controls.maxDistance = 1000;
-
-        controls.maxPolarAngle = Math.PI / 2;
+        controls = new TrackballControls(camera, renderer.domElement);
+        controls.rotateSpeed = 2.0;
+        controls.zoomSpeed = 1.2;
+        controls.panSpeed = 0.8;
 
         //
 
@@ -114,17 +129,17 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
-    function animate() {
+    function animate(now) {
         requestAnimationFrame(animate);
-        render();
+        render(now);
         stats.update();
         controls.update();
     }
 
-    function render() {
-        const time = Date.now() * 0.005;
-        particleSystem.rotation.y = 0.01 * time;
-
+    function render(now) {
+        //const time = Date.now() * 0.005;
+        //particleSystem.rotation.y = 0.01 * time;
+        uniforms.time.value = now / 1000.0;
         renderer.render(scene, camera);
     }
 
@@ -132,8 +147,9 @@
 
         const positions = geometry.attributes.position.array;
 
-        let i = 0;
         let count = 0;
+        let sum = new THREE.Vector3(0, 0, 0);
+        let points = [];
 
         lines.forEach((line) => {
             if (line.substr(0, 2) == "v ") {
@@ -143,15 +159,23 @@
                     .filter((element) => {
                         return element.length != 0
                     });
-                positions[i++] = (data[1] * radius);
-                positions[i++] = (data[2] * radius);
-                positions[i++] = (data[3] * radius);
+
+                let point = new THREE.Vector3(parseFloat(data[1]), parseFloat(data[2]), parseFloat(data[3]));
+                points.push(point);
+                sum.add(point);
 
                 count++;
             }
         });
 
-        console.log(count);
+        sum.divideScalar(count)
+
+        let i = 0;
+        points.forEach((point) => {
+            positions[i++] = (point.x - sum.x) * radius;
+            positions[i++] = (point.y - sum.y) * radius;
+            positions[i++] = (point.z - sum.z) * radius;
+        });
 
         geometry.attributes.position.needsUpdate = true;
         geometry.drawRange.count = count;
