@@ -1,59 +1,61 @@
 <html>
-    <head></head>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <body>
 
-        <style>
-            body {
-                margin: 0;
-                padding: 0;
-            }
-        </style>
+<head></head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <div id="container"></div>
+<body>
 
-        <script type="module">
-            import Stats from 'https://mrdoob.github.io/stats.js/build/stats.module.js';
-            import * as THREE from 'https://unpkg.com/three@0.127.0/build/three.module.js'
-            import {TrackballControls} from 'https://unpkg.com/three@0.127.0/examples/jsm/controls/TrackballControls.js'
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+    </style>
 
-            let renderer,
-                scene,
-                camera,
-                controls,
-                stats;
+    <div id="container"></div>
 
-            let particleSystem,
-                uniforms,
-                geometry;
+    <script type="module">
+        import Stats from 'https://mrdoob.github.io/stats.js/build/stats.module.js';
+        import * as THREE from 'https://unpkg.com/three@0.127.0/build/three.module.js'
+        import { TrackballControls } from 'https://unpkg.com/three@0.127.0/examples/jsm/controls/TrackballControls.js'
+
+        let renderer,
+            scene,
+            camera,
+            controls,
+            stats;
+
+        let particleSystem,
+            uniforms,
+            geometry;
 
             const particles = 1000000;
 
-            init();
-            animate();
+        init();
+        animate();
 
-            function init() {
+        function init() {
 
-                // Scene setup.
-                scene = new THREE.Scene();
-                camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 1, 10000);
-                camera.position.z = 10;
+            // Scene setup.
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, .0001, 10000);
+            camera.position.z = 10;
 
-                // Shader setup.
+            // Shader setup.
 
-                uniforms = {
-                    time: {
-                        type: "f",
-                        value: 1.0
-                    },
-                    pointTexture: {
-                        value: new THREE
-                            .TextureLoader()
-                            .load("https://threejs.org/examples/textures/sprites/spark1.png")
-                    }
-                };
+            uniforms = {
+                time: {
+                    type: "f",
+                    value: 1.0
+                },
+                pointTexture: {
+                    value: new THREE
+                        .TextureLoader()
+                        .load("https://threejs.org/examples/textures/sprites/spark1.png")
+                }
+            };
 
-                let vertexShader = `
+            let vertexShader = `
             varying vec4 vColor;
             uniform float time;
 
@@ -72,11 +74,11 @@
                 gl_Position = projectionMatrix * viewMatrix * worldPosition;
 
                 gl_PointSize = mix(2.0, 0.0, clamp(distanceToCamera / 40.0, 0.0, 1.0));
-                vColor.a = mix(1.0, 0.0, clamp(distanceToCamera / 40.0, 0.0, 1.0));
+                vColor.a = mix(1.0, 0.0, clamp(distanceToCamera / 40.0, 0.0, 1.0)) ;
             }
         `;
 
-                let fragmentShader = `
+            let fragmentShader = `
             uniform sampler2D pointTexture;
             varying vec4 vColor;
             void main() {
@@ -84,190 +86,280 @@
             }
         `;
 
-                const shaderMaterial = new THREE.ShaderMaterial({
-                    uniforms: uniforms,
-                    vertexShader: vertexShader,
-                    fragmentShader: fragmentShader,
-                    blending: THREE.AdditiveBlending,
-                    depthTest: false,
-                    transparent: true,
-                    vertexColors: true
-                });
+            const shaderMaterial = new THREE.ShaderMaterial({
+                uniforms: uniforms,
+                vertexShader: vertexShader,
+                fragmentShader: fragmentShader,
+                blending: THREE.AdditiveBlending,
+                depthTest: false,
+                transparent: true,
+                vertexColors: true
+            });
 
-                // Particle system setup.
+            // Particle system setup.
 
-                geometry = new THREE.BufferGeometry();
+            geometry = new THREE.BufferGeometry();
 
-                const positions = [];
-                let radius = 1;
-                for (let i = 0; i < particles; i++) {
-                    positions.push((Math.random() * 2 - 1) * radius);
-                    positions.push((Math.random() * 2 - 1) * radius);
-                    positions.push((Math.random() * 2 - 1) * radius);
-                }
+            const positions = [];
+            let radius = 1;
+            for (let i = 0; i < particles; i++) {
+                positions.push((Math.random() * 2 - 1) * radius);
+                positions.push((Math.random() * 2 - 1) * radius);
+                positions.push((Math.random() * 2 - 1) * radius);
+            }
 
-                geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-                particleSystem = new THREE.Points(geometry, shaderMaterial);
-                scene.add(particleSystem);
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            particleSystem = new THREE.Points(geometry, shaderMaterial);
+            scene.add(particleSystem);
 
-                // Rendeder setup.
-                renderer = new THREE.WebGLRenderer();
-                renderer.setPixelRatio(window.devicePixelRatio);
+            // Rendeder setup.
+            renderer = new THREE.WebGLRenderer();
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+            // Add to document.
+            const container = document.getElementById('container');
+            container.appendChild(renderer.domElement);
+            stats = new Stats();
+            //container.appendChild(stats.dom);
+
+            // Controls setup.
+            controls = new TrackballControls(camera, renderer.domElement);
+            controls.rotateSpeed = 10.0;
+            controls.zoomSpeed = 1.0;
+            controls.panSpeed = .1;
+
+            // Resize listener.
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+
                 renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
 
-                // Add to document.
-                const container = document.getElementById('container');
-                container.appendChild(renderer.domElement);
-                stats = new Stats();
-                container.appendChild(stats.dom);
+        // Animation loop.
+        function animate(now) {
+            uniforms.time.value = now / 1000.0;
+            renderer.render(scene, camera);
 
-                // Controls setup.
-                controls = new TrackballControls(camera, renderer.domElement);
-                controls.rotateSpeed = 2.0;
-                controls.zoomSpeed = 1.2;
-                controls.panSpeed = 0.8;
+            stats.update();
+            controls.update();
 
-                // Resize listener.
-                window.addEventListener('resize', () => {
-                    camera.aspect = window.innerWidth / window.innerHeight;
-                    camera.updateProjectionMatrix();
+            requestAnimationFrame(animate);
+        }
 
-                    renderer.setSize(window.innerWidth, window.innerHeight);
-                });
+        // Handle drag and drop.
+
+        let dropElement = document.getElementById("container");
+
+        // Handle drag.
+
+        dropElement.addEventListener('dragover', (event) => {
+            event.stopPropagation();
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'copy';
+        }, false);
+
+        // Handle drop.load
+        dropElement.addEventListener('drop', async (event) => {
+            event.stopPropagation();
+            event.preventDefault();
+
+            let files = event.dataTransfer.files;
+            let file = files[0];
+
+            let filenameSplit = file
+                .name
+                .split('.');
+
+            if (filenameSplit[filenameSplit.length - 1] == "sgr") {
+                console.log("Processing sgr.");
+
+                let fileReader = new FileReader();
+
+                fileReader.onload = (event) => {
+                    let buffer = event.target.result;
+                    processSgr(buffer);
+                };
+
+                fileReader.readAsArrayBuffer(file);
+                return;
             }
 
-            // Animation loop.
-            function animate(now) {
-                uniforms.time.value = now / 1000.0;
-                renderer.render(scene, camera);
+            if (filenameSplit[filenameSplit.length - 1] == "obj") {
+                console.log("Processing obj.");
 
-                stats.update();
-                controls.update();
+                let fileReader = new FileReader();
 
-                requestAnimationFrame(animate);
+                fileReader.onload = (event) => {
+                    let text = event.target.result;
+                    processObj(text);
+                };
+
+                fileReader.readAsText(file);
+                return;
             }
 
-            // Handle drag and drop.
+            if (filenameSplit[filenameSplit.length - 1] == "pcache") {
+                console.log("Processing pcache.");
 
-            let dropElement = document.getElementById("container");
+                let fileReader = new FileReader();
 
-            // Handle drag.
+                fileReader.onload = (event) => {
+                    let text = event.target.result;
+                    processPCache(text);
+                };
 
-            dropElement.addEventListener('dragover', (event) => {
-                event.stopPropagation();
-                event.preventDefault();
-                event.dataTransfer.dropEffect = 'copy';
-            }, false);
+                fileReader.readAsText(file);
+                return;
+            }
 
-            // Handle drop.
-            dropElement.addEventListener('drop', async (event) => {
-                event.stopPropagation();
-                event.preventDefault();
+        }, false);
 
-                // Is this an OBJ?
-                let files = event.dataTransfer.files;
-                let file = files[0];
+        const getFileFromUrl = async (url) => {
+            let response = await fetch(url);
+            //let text = await response.text()
+            //processObj(text);
+            let data = await response.data();
+            processSgr(data);
+        };
 
-                let filenameSplit = file
-                    .name
-                    .split('.');
-                if (filenameSplit[filenameSplit.length - 1] != "obj") {
+        const updateGeometry = (points) => {
+            let average = new THREE.Vector3(0, 0, 0);
+            let min = new THREE.Vector3(Infinity, Infinity, Infinity);
+            let max = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+
+            points.forEach((point) => {
+
+                if (point.x < min.x)
+                    min.x = point.x;
+                if (point.y < min.y)
+                    min.y = point.y;
+                if (point.z < min.z)
+                    min.z = point.z;
+
+                if (point.x > max.x)
+                    max.x = point.x;
+                if (point.y > max.y)
+                    max.y = point.y;
+                if (point.z > max.z)
+                    max.z = point.z;
+
+                if (isNaN(point.x) || isNaN(point.y) || isNaN(point.z)) {
+                    console.log("NAN!");
                     return;
                 }
 
-                // Read file contents.
-                let fileReader = new FileReader();
+                average.add(point);
+            });
 
-                fileReader.onload = (function (file) {
-                    return function (event) {
-                        let text = event.target.result;
-                        processObj(text);
-                    };
-                })(file);
+            // Calculate center point.
+            let centroid = new THREE.Vector3((max.x + min.x) / 2.0, (max.y + min.y) / 2.0, (max.z + min.z) / 2.0);
 
-                fileReader.readAsText(file);
+            // Get the average magnitude.
+            average = average.divideScalar(points.length);
+            let averageMagnitude = average
+                .sub(centroid)
+                .length();
 
-            }, false);
+            // Update position data.
+            const positions = geometry.attributes.position.array;
 
-            const getObjFromUrl = async (url) => {
-                let response = await fetch(url);
-                let text = await response.text()
-                processObj(text);
-            };
+            console.log("Min:");
+            console.log(min);
+            console.log("Max:");
+            console.log(max);
+            console.log("Centroid:");
+            console.log(centroid);
+            console.log("Average:");
+            console.log(average);
+            console.log("Average Magnitude:");
+            console.log(averageMagnitude);
 
-            // Process the lines of an Obj
-            const processObj = (objText) => {
-                let lines = objText.split(/[\r\n]+/g);
+            let i = 0;
+            points.forEach((point) => {
+                positions[i++] = (point.x - centroid.x);// * (1.0 / averageMagnitude) / 2;
+                positions[i++] = (point.y - centroid.y);// * (1.0 / averageMagnitude) / 2;
+                positions[i++] = (point.z - centroid.z);// * (1.0 / averageMagnitude) / 2;
+            });
 
-                let count = 0;
-                let average = new THREE.Vector3(0, 0, 0);
-                let points = [];
+            geometry.attributes.position.needsUpdate = true;
+            geometry.drawRange.count = Math.min(particles, points.length);
+        }
 
-                let min = new THREE.Vector3(Infinity, Infinity, Infinity);
-                let max = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+        const processPCache = (pCacheText) => {
+            let points = [];
 
-                lines.forEach((line) => {
-                    if (line.substr(0, 2) == "v ") {
 
-                        let data = line
-                            .split(" ")
-                            .filter((element) => {
-                                return element.length != 0
-                            });
+            let lines = pCacheText.split(/[\r\n]+/g);
+            let processedHeader = false;
+            console.log(lines[0]);
+            lines.forEach((line) => {
 
-                        let point = new THREE.Vector3(parseFloat(data[1]), parseFloat(data[2]), parseFloat(data[3]));
-
-                        // Bounds check.
-                        if (point.x < min.x) 
-                            min.x = point.x;
-                        if (point.y < min.y) 
-                            min.y = point.y;
-                        if (point.z < min.z) 
-                            min.z = point.z;
-                        
-                        if (point.x > max.x) 
-                            max.x = point.x;
-                        if (point.y > max.y) 
-                            max.y = point.y;
-                        if (point.z > max.z) 
-                            max.z = point.z;
-                        
-                        points.push(point);
-                        average.add(point);
-
-                        count++;
-                    }
-                });
-
-                // Calculate center point.
-                let centroid = new THREE.Vector3((max.x + min.x) / 2.0, (max.y + min.y) / 2.0, (max.z + min.z) / 2.0);
-
-                // Get the average magnitude.
-                let averageMagnitude = average
-                    .divideScalar(count)
-                    .sub(centroid)
-                    .length();
-
-                // Update position data.
-                let i = 0;
-                const positions = geometry.attributes.position.array;
-                points.forEach((point) => {
-                    positions[i++] = (point.x - centroid.x) * (1.0 / averageMagnitude) / 2;
-                    positions[i++] = (point.y - centroid.y) * (1.0 / averageMagnitude) / 2;
-                    positions[i++] = (point.z - centroid.z) * (1.0 / averageMagnitude) / 2;
-                });
-                geometry.attributes.position.needsUpdate = true;
-                geometry.drawRange.count = count;
-            }
-
-            // For iFrame access.
-            window.highScore = {
-                open: (url) => {
-                    let fullUrl = window.location.protocol + "//" + window.location.hostname + ":" + window.location.port + "/" + url;
-                    getObjFromUrl(fullUrl);
+                if (line == "end_header") {
+                    console.log("Found pCache header.");
+                    processedHeader = true;
+                    console.log(line);
+                    return;
                 }
-            }
-        </script>
 
-    </body>
+                if (processedHeader) {
+                    let data = line
+                        .split(" ")
+                        .filter((element) => {
+                            return element.length != 0
+                        });
+
+                    let point = new THREE.Vector3(parseFloat(data[0]), parseFloat(data[1]), parseFloat(data[2]));
+                    points.push(point);
+                }
+
+            });
+
+            console.log(points[0]);
+
+            updateGeometry(points);
+        }
+
+        const processSgr = (sgrBuffer) => {
+
+            let floatArray = new Float32Array(sgrBuffer);
+
+            let points = [];
+            for (let i = 0; i < floatArray.length; i += 3) {
+                let point = new THREE.Vector3(floatArray[i], floatArray[i + 1], floatArray[i + 2])
+                points.push(point);
+            }
+            updateGeometry(points);
+        }
+
+        const processObj = (objText) => {
+            let points = [];
+
+            let lines = objText.split(/[\r\n]+/g);
+            lines.forEach((line) => {
+                if (line.substr(0, 2) == "v ") {
+                    let data = line
+                        .split(" ")
+                        .filter((element) => {
+                            return element.length != 0
+                        });
+
+                    let point = new THREE.Vector3(parseFloat(data[1]), parseFloat(data[2]), parseFloat(data[3]))
+                    points.push(point);
+                }
+            });
+
+            updateGeometry(points);
+        }
+
+        window.addEventListener("message", (event) => {
+            console.log(event);
+            getFileFromUrl(event.data);
+        }, false);
+    </script>
+
+</body>
+
 </html>
